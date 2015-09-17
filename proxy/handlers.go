@@ -11,6 +11,12 @@ import (
 var pow256 = common.BigPow(2, 256)
 
 func (s *ProxyServer) handleGetWorkRPC(cs *Session, diff, id string) (reply []string, errorReply *ErrorReply) {
+	miner, ok := s.miners.Get(id)
+	if !ok {
+		miner = NewMiner(id, cs.ip)
+		s.registerMiner(miner)
+	}
+
 	t := s.currentBlockTemplate()
 	minerDifficulty, err := strconv.ParseFloat(diff, 64)
 	if err != nil {
@@ -32,8 +38,7 @@ func (s *ProxyServer) handleGetWorkRPC(cs *Session, diff, id string) (reply []st
 func (s *ProxyServer) handleSubmitRPC(cs *Session, diff string, id string, params []string) (reply bool, errorReply *ErrorReply) {
 	miner, ok := s.miners.Get(id)
 	if !ok {
-		miner = NewMiner(id, cs.ip)
-		s.registerMiner(miner)
+		return false, &ErrorReply{Code: -1, Message: "Unknown miner"}
 	}
 
 	t := s.currentBlockTemplate()

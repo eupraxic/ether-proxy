@@ -19,6 +19,7 @@ type Miner struct {
 	sync.RWMutex
 	Id            string
 	IP            string
+	startTime     int64
 	lastBeat      int64
 	validShares   uint64
 	invalidShares uint64
@@ -28,7 +29,7 @@ type Miner struct {
 }
 
 func NewMiner(id, ip string) *Miner {
-	miner := &Miner{Id: id, IP: ip, shares: make(map[int64]int64)}
+	miner := &Miner{Id: id, IP: ip, startTime: util.MakeTimestamp(), shares: make(map[int64]int64)}
 	return miner
 }
 
@@ -49,7 +50,13 @@ func (m *Miner) storeShare(diff int64) {
 }
 
 func (m *Miner) hashrate() int64 {
+	// calculate over the smaller of 15 minutes or since miner's startTime
 	now := util.MakeTimestamp()
+	numPeriods := now - m.startTime
+	if 900000 < numPeriods {
+		numPeriods = 900000
+	}
+
 	totalShares := int64(0)
 	m.Lock()
 	for k, v := range m.shares {
@@ -60,7 +67,7 @@ func (m *Miner) hashrate() int64 {
 		}
 	}
 	m.Unlock()
-	return totalShares / 900000
+	return totalShares / numPeriods
 }
 
 func (m *Miner) processShare(s *ProxyServer, t *BlockTemplate, diff string, params []string) bool {
